@@ -4,14 +4,9 @@ import 'dotenv/config';
 import connectDB from './configs/db.js';
 import {inngest ,functions} from './inngest/index.js'
 import {serve} from 'inngest/express'
-<<<<<<< HEAD
-import { clerkMiddleware } from '@clerk/express'
-import userRouter from './routes/userRoutes.js';
+import { clerkMiddleware } from '@clerk/express';
+import userRouter from './routes/userRoutes.js'; 
 
-
-
-=======
->>>>>>> 81d95510a78bfaede454be83a969910da359ce83
 
 const app =express();
 await connectDB();
