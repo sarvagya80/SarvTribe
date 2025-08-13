@@ -9,6 +9,7 @@ const userSchema = new mongoose.Schema({
     profile_picture:{type:String, default:''},
     cover_photo:{type:String, default:''},
     location :{type:String, default:''},
+    timezone:{type:String, default:'America/New_York'},
     followers:[{type:String, ref:'User'}],
     following:[{type:String, ref:'User'}],
     connections:[{type:String, ref:'User'}],
