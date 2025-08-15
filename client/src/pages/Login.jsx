@@ -1,40 +1,44 @@
-import React from 'react'
-import {assets} from '../assets/assets';
+import React from 'react';
+import { assets } from '../assets/assets';
 import { Star } from 'lucide-react';
-import {SignIn } from '@clerk/clerk-react';
+import { SignIn } from '@clerk/clerk-react';
 
 const Login = () => {
   return (
     <div className='min-h-screen flex flex-col md:flex-row'>
       {/* Background image */}
-      <img src={assets.bgImage} alt= "Background" className='absolute top-0 left-0 -z-1 w-full h-full object-cover'/>
+      <img src={assets.bgImage} alt="Abstract geometric background" className='absolute top-0 left-0 -z-1 w-full h-full object-cover' />
+      
       {/* Left side branding */}
       <div className='flex-1 flex flex-col items-start justify-between p-6 md:p-10 lg:pl-40'>
-        <img src={assets.logo} alt="Logo" className='h-12 object-contain' />
+        <img src={assets.logo} alt="SarvTribe Logo" className='h-12 object-contain' />
         <div>
           <div className='flex items-center gap-3 mb-4 max-md:mt-10'>
-          <img src={assets.group_users} alt="Group Users" className='h-8 md:h-10' />
-          <div>
-            <div className='flex'>
-              {Array(5).fill(0).map((_, i) => (<Star key={i} className='size-4 md:size-4.5 text-transparent fill-amber-500' />))}
+            <img src={assets.group_users} alt="A group of people connected" className='h-8 md:h-10' />
+            <div>
+              <div className='flex'>
+                {Array(5).fill(0).map((_, i) => (
+                  <Star key={i} className='size-4 md:size-4.5 text-transparent fill-amber-500' aria-hidden="true" />
+                ))}
+              </div>
+              <p>Used by 12k+ developers</p>
             </div>
-            <p>Used by 12k+ developers</p>
           </div>
-          </div>
-
-          <h1 className='text-3xl md:text-6xl md:pb-2 font-bold   bg-gradient-to-r from-indigo-950 to-indigo-800 bg-clip-text text-transparent'>
-            More than just a friends truly connect
+          <h1 className='text-3xl md:text-6xl font-bold bg-gradient-to-r from-indigo-950 to-indigo-800 bg-clip-text text-transparent'>
+            More than just friends—truly connect
           </h1>
-          <p className='text-xl md:text-3xl text-indigo-900 max-w-72 md:max-w-md'>connect with global community on ServTribe</p>
+          <p className='text-xl md:text-3xl text-indigo-900 md:max-w-md mt-2'>
+            connect with global community on SarvTribe
+          </p>
         </div>
-        <span className='md:h-10'></span>
       </div>
+
       {/* Right side login form */}
       <div className='flex-1 flex items-center justify-center p-6 sm:p-10'>
         <SignIn />
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default Login
+export default Login;
