@@ -9,10 +9,10 @@ import { clerkMiddleware } from "@clerk/express";
 
 import connectDB from './configs/db.js';
 import { inngest, functions } from './inngest/index.js';
-import userRouter from './routes/userRoutes.js';
-import postRouter from './routes/postRoutes.js'; // Ensure this filename is correct
-import storyRoutes from "./routes/storyRoutes.js";
-import messageRouter from './routes/messageRoutes.js';
+import userRouter from './routes/userRouter.js';
+import postRouter from './routes/postRouter.js'; // Ensure this filename is correct
+import storyRoutes from "./routes/storyRouter.js";
+import messageRouter from './routes/messageRouter.js';
 
 const app = express();
 
@@ -37,7 +37,7 @@ app.get('/', (req, res) => res.send('Server is running'));
 app.use('/api/inngest', serve({ client: inngest, functions }));
 app.use('/api/user', userRouter);
 app.use('/api/post', postRouter);
-app.use("/api/story", storyRoutes);
+app.use("/api/story", storyRouter);
 app.use('/api/message', messageRouter);
 
 // 404 handler
