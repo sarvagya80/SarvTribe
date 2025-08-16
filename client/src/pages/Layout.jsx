@@ -1,44 +1,33 @@
 import React, { useState } from 'react';
-import { Outlet, Navigate } from 'react-router-dom';
-import { useUser } from '@clerk/clerk-react'; // Import useUser
+import { Outlet } from 'react-router-dom';
 import { Menu, X } from 'lucide-react';
 
 import SideBar from '../components/SideBar';
-import Loading from '../components/Loading';
 
+// ✅ SIMPLIFIED: Removed all Clerk hooks and auth checks.
+// This component's only job is to provide the layout.
+// The ProtectedRoute in App.jsx ensures this component only renders for signed-in users.
 const Layout = () => {
-  const { isSignedIn, isLoaded } = useUser(); // Use Clerk's hook
-  const [sideBarOpen, setSideBarOpen] = useState(false);
+    const [sideBarOpen, setSideBarOpen] = useState(false);
 
-  // 1. Wait until Clerk has finished loading its state
-  if (!isLoaded) {
-    return <Loading />;
-  }
+    return (
+        <div className='w-full flex h-screen bg-gray-50'>
+            <SideBar sideBarOpen={sideBarOpen} setSideBarOpen={setSideBarOpen} />
+            
+            <main className='flex-1 overflow-y-auto'>
+                <Outlet />
+            </main>
 
-  // 2. If Clerk is loaded but the user is not signed in, redirect them to the login page
-  if (!isSignedIn) {
-    return <Navigate to="/login" replace />;
-  }
-
-  // 3. If the user is signed in and Clerk is loaded, render the layout
-  return (
-    <div className='w-full flex h-screen'>
-      <SideBar sideBarOpen={sideBarOpen} setSideBarOpen={setSideBarOpen} />
-      
-      <div className='flex-1 bg-slate-50 overflow-y-auto'>
-        <Outlet />
-      </div>
-
-      {/* Mobile sidebar toggle button (Slightly simplified) */}
-      <button 
-        className='absolute top-3 right-3 p-2 z-50 bg-white rounded-md shadow w-10 h-10 text-gray-600 sm:hidden flex items-center justify-center' 
-        onClick={() => setSideBarOpen(!sideBarOpen)}
-        aria-label={sideBarOpen ? "Close menu" : "Open menu"}
-      >
-        {sideBarOpen ? <X /> : <Menu />}
-      </button>
-    </div>
-  );
+            {/* Mobile sidebar toggle button */}
+            <button 
+                className='absolute top-3 right-3 p-2 z-50 bg-white rounded-md shadow w-10 h-10 text-gray-600 sm:hidden flex items-center justify-center' 
+                onClick={() => setSideBarOpen(!sideBarOpen)}
+                aria-label={sideBarOpen ? "Close menu" : "Open menu"}
+            >
+                {sideBarOpen ? <X /> : <Menu />}
+            </button>
+        </div>
+    );
 };
 
 export default Layout;

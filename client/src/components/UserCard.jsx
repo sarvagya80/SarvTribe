@@ -2,17 +2,16 @@ import React from 'react';
 import { MapPin, MessageCircle, Plus, UserPlus } from 'lucide-react';
 import { useSelector, useDispatch } from 'react-redux';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 
 import api from '../api/axios';
-// Import the new actions and other thunks
+// ✅ CORRECTED: Import path and thunk name
 import { startFollowing, revertFollow } from '../fetures/user/userSlice';
-import { fetchConnections } from '../fetures/connections/connectionSlice';
+import { fetchUserNetwork } from '../fetures/connections/connectionSlice';
 
 const UserCard = ({ user }) => {
-    const currentUser = useSelector((state) => state.user.value);
-    const { getToken } = useAuth();
+    // ✅ CORRECTED: The user data is in state.user.data
+    const currentUser = useSelector((state) => state.user.data);
     const dispatch = useDispatch();
     const navigate = useNavigate();
 
@@ -21,26 +20,22 @@ const UserCard = ({ user }) => {
 
         const targetUserId = user._id;
         
-        // 1. Optimistically update the UI
+        // Optimistic update
         dispatch(startFollowing(targetUserId));
 
         try {
-            const token = await getToken();
-            const { data } = await api.post('/api/user/follow', { id: targetUserId }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // ✅ CORRECTED: API call updated. Token is handled by the interceptor.
+            // Body now uses 'targetUserId' to match the backend controller.
+            const { data } = await api.post('/api/user/follow', { targetUserId });
 
             if (!data.success) {
-                // 2a. If API fails, revert the change
                 toast.error(data.message);
                 dispatch(revertFollow(targetUserId));
             } else {
                 toast.success(data.message);
-                // On success, the UI is already correct. No extra fetch needed.
             }
         } catch (error) {
-            // 2b. If request fails, also revert the change
-            toast.error(error.message);
+            toast.error(error.response?.data?.message || "An error occurred.");
             dispatch(revertFollow(targetUserId));
         }
     };
@@ -48,29 +43,29 @@ const UserCard = ({ user }) => {
     const handleConnectionRequest = async () => {
         if (!user?._id) return toast.error("User ID missing");
         
-        if (currentUser.connections.includes(user._id)) {
-            return navigate(`/messages/${user._id}`);
+        const targetUserId = user._id;
+
+        if (currentUser.connections.includes(targetUserId)) {
+            return navigate(`/messages/${targetUserId}`);
         }
 
         try {
-            const token = await getToken();
-            const { data } = await api.post('/api/user/connect', { id: user._id }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            // ✅ CORRECTED: API call updated. Token is handled by the interceptor.
+            // Body now uses 'targetUserId' and the endpoint is the specific one for sending requests.
+            const { data } = await api.post('/api/user/connect/send', { targetUserId });
 
             if (data.success) {
                 toast.success(data.message);
-                // Refresh the connections list to show the new "pending" state
-                dispatch(fetchConnections(token));
+                // ✅ CORRECTED: Dispatch the correct thunk with no arguments.
+                dispatch(fetchUserNetwork());
             } else {
                 toast.error(data.message || "Connection request failed");
             }
         } catch (error) {
-            toast.error(error.message);
+            toast.error(error.response?.data?.message || "An error occurred.");
         }
     };
 
-    // Return null or a skeleton loader if essential data is missing
     if (!user || !currentUser) {
         return null; 
     }

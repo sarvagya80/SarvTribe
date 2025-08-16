@@ -1,30 +1,27 @@
 import express from 'express';
-// Import all the "brain" functions from your controller
 import {
     acceptConnectionRequest,
     discoverUsers,
     followUser,
-    getUserConnections,
-    getUserData,
+    getMe,
+    getUserNetwork,
+    getUserProfile,
     sendConnectionRequest,
     unfollowUser,
     updateUserData,
-    getUserProfiles,
-    createProfileOnFirstLogin // <-- Import your function
-} from '../controllers/usercontroller.js'; 
-import { protect } from '../middlewares/auth.js';
-import { upload } from '../configs/multer.js';
-import { getUserRecentMessages } from '../controllers/Messagecontroller.js';
+} from '../controllers/userController.js';
+import { clerkProtect } from '../middlewares/auth.js';
+import { upload } from '../middlewares/multer.js';
 
 const userRouter = express.Router();
 
-// Get data for the currently authenticated user
-userRouter.get('/data', protect, getUserData);
+// 🔒 Get the logged-in user's own profile data
+userRouter.get('/me', clerkProtect, getMe);
 
-// Update the current user's profile
-userRouter.post(
+// 🔒 Update the logged-in user's profile
+userRouter.patch( // Using PATCH for partial updates is more conventional
     '/update',
-    protect, 
+    clerkProtect,
     upload.fields([
         { name: 'profile', maxCount: 1 },
         { name: 'cover', maxCount: 1 }
@@ -32,25 +29,21 @@ userRouter.post(
     updateUserData
 );
 
-// Search for other users
-userRouter.post('/discover', protect, discoverUsers);
+// 🔒 Discover other users via search
+userRouter.post('/discover', clerkProtect, discoverUsers);
 
-// Follow/Unfollow actions
-userRouter.post('/follow', protect, followUser);
-userRouter.post('/unfollow', protect, unfollowUser);
+// 🔒 Follow and unfollow users
+userRouter.post('/follow', clerkProtect, followUser);
+userRouter.post('/unfollow', clerkProtect, unfollowUser);
 
-// Connection management
-userRouter.post('/connect', protect, sendConnectionRequest);
-userRouter.post('/accept', protect, acceptConnectionRequest);
-userRouter.get('/connections', protect, getUserConnections); 
+// 🔒 Manage connection requests
+userRouter.post('/connect/send', clerkProtect, sendConnectionRequest);
+userRouter.post('/connect/accept', clerkProtect, acceptConnectionRequest);
 
-// Get another user's profile using the imported function
-userRouter.get('/profiles/:profileId', getUserProfiles);
+// 🔒 Get the user's entire network (connections, followers, etc.)
+userRouter.get('/network', clerkProtect, getUserNetwork);
 
-// ... other imports and routes
-userRouter.post('/create-profile', protect, createProfileOnFirstLogin);
-
-// Get recent messages for the sidebar
-userRouter.get('/recent-messages', protect, getUserRecentMessages);
+// ✅ Public route to view any user's profile
+userRouter.get('/:profileId', getUserProfile);
 
 export default userRouter;

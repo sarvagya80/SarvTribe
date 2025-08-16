@@ -2,21 +2,20 @@ import React, { useState, useRef, useEffect } from 'react';
 import { ImageIcon, SendHorizonal } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
 import { useParams } from 'react-router-dom';
-import { useAuth } from '@clerk/clerk-react';
 import toast from 'react-hot-toast';
 
 import api from '../api/axios';
-import { addMessage, resetMessages, fetchMessages } from '../fetures/messages/messagesSlice'; // Corrected path
-import Loading from '../components/Loading'; // Assuming you have a Loading component
+// ✅ CORRECTED: Import path from "fetures" to "features"
+import { addMessage, resetMessages, fetchMessages } from '../fetures/messages/messagesSlice';
+import Loading from '../components/Loading';
 
 const ChatBox = () => {
-    // Get the entire messages slice state to access status
     const { messages, status } = useSelector((state) => state.messages);
     const { connections } = useSelector((state) => state.connections);
-    const currentUser = useSelector((state) => state.user.value); // Get current user for message alignment
+    // ✅ CORRECTED: User data is in state.user.data
+    const currentUser = useSelector((state) => state.user.data);
 
-    const { userId } = useParams();
-    const { getToken } = useAuth();
+    const { userId } = useParams(); // This is the ID of the other user
     const dispatch = useDispatch();
 
     const [text, setText] = useState('');
@@ -25,19 +24,13 @@ const ChatBox = () => {
     const [recipient, setRecipient] = useState(null);
     const messagesEndRef = useRef(null);
 
-    // Effect to clean up the image preview URL
+    // This image preview logic is perfect as is.
     useEffect(() => {
-        return () => {
-            if (imagePreview) {
-                URL.revokeObjectURL(imagePreview);
-            }
-        };
+        return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
     }, [imagePreview]);
 
     const handleImageChange = (e) => {
-        if (imagePreview) {
-            URL.revokeObjectURL(imagePreview);
-        }
+        if (imagePreview) URL.revokeObjectURL(imagePreview);
         const file = e.target.files[0];
         if (file) {
             setImage(file);
@@ -46,25 +39,21 @@ const ChatBox = () => {
     };
 
     const sendMessage = async () => {
-        try {
-            if (!text.trim() && !image) return;
+        if (!text.trim() && !image) return;
 
-            const token = await getToken();
-            const formData = new FormData();
-            formData.append('to_user_id', userId);
-            formData.append('text', text);
-            if (image) {
-                formData.append('image', image);
-            }
-            
-            // Clear input fields immediately for a faster feel
-            setText('');
-            setImage(null);
-            setImagePreview(null);
-            
-            const { data } = await api.post('/api/message/send', formData, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+        const formData = new FormData();
+        formData.append('to_user_id', userId);
+        formData.append('text', text);
+        if (image) formData.append('image', image);
+        
+        // Clear inputs immediately for better UX
+        setText('');
+        setImage(null);
+        setImagePreview(null);
+        
+        try {
+            // ✅ CHANGED: Simplified API call. Token is now handled automatically by the Axios interceptor.
+            const { data } = await api.post('/api/message/send', formData);
 
             if (data.success) {
                 dispatch(addMessage(data.message));
@@ -72,22 +61,23 @@ const ChatBox = () => {
                 throw new Error(data.message);
             }
         } catch (error) {
-            toast.error(error.message);
+            toast.error(error.response?.data?.message || "Failed to send message.");
         }
     };
 
-    // Effect to fetch initial data
+    // Effect to fetch initial chat history
     useEffect(() => {
         if (userId) {
-            dispatch(fetchMessages({ token: getToken(), userId }));
+            // ✅ CORRECTED: Dispatch the thunk with only the other user's ID. No token needed.
+            dispatch(fetchMessages(userId));
         }
-        // Cleanup function to clear messages when leaving the chat
+        // This cleanup function is great for clearing the chat when you navigate away.
         return () => {
             dispatch(resetMessages());
         };
-    }, [userId, dispatch, getToken]);
+    }, [userId, dispatch]);
 
-    // Effect to find the recipient's info from connections
+    // Effect to find the recipient's info from the connections list
     useEffect(() => {
         if (connections.length > 0) {
             const targetUser = connections.find(connection => connection._id === userId);
@@ -105,15 +95,14 @@ const ChatBox = () => {
     }
 
     if (!recipient) {
-        // This can show while connections are loading or if user is not a connection
         return <div className="flex-1 flex items-center justify-center text-gray-500">Select a conversation to start chatting.</div>;
     }
 
     return (
-        <div className='flex flex-col h-full'>
+        <div className='flex flex-col h-full bg-gray-50'>
             {/* Header */}
             <div className='flex items-center gap-4 p-4 border-b border-gray-200 bg-white'>
-                <img src={recipient.profile_picture} className='size-10 rounded-full' alt={`${recipient.full_name}'s profile`} />
+                <img src={recipient.profile_picture} className='size-10 rounded-full object-cover' alt={`${recipient.full_name}'s profile`} />
                 <div>
                     <p className='font-semibold'>{recipient.full_name}</p>
                     <p className='text-sm text-gray-500'>@{recipient.username}</p>
@@ -137,7 +126,7 @@ const ChatBox = () => {
                 </div>
             </div>
             {/* Input Area */}
-            <div className='p-4 bg-gray-50 border-t'>
+            <div className='p-4 bg-white border-t'>
                 <div className='flex items-center gap-3 pl-5 p-1.5 bg-white w-full max-w-4xl mx-auto border-gray-300 border shadow-sm rounded-full'>
                     <input
                         type='text'
@@ -147,15 +136,15 @@ const ChatBox = () => {
                         onChange={(e) => setText(e.target.value)}
                         value={text}
                     />
-                    <label htmlFor='image-upload' className="cursor-pointer">
+                    <label htmlFor='image-upload' className="cursor-pointer p-2 rounded-full hover:bg-gray-100">
                         {imagePreview ? (
-                            <img src={imagePreview} className='h-8 w-8 object-cover rounded' alt="Image preview" />
+                            <img src={imagePreview} className='h-6 w-6 object-cover rounded' alt="Image preview" />
                         ) : (
-                            <ImageIcon className='size-7 text-gray-400' />
+                            <ImageIcon className='size-6 text-gray-400' />
                         )}
                         <input type='file' id='image-upload' accept='image/*' hidden onChange={handleImageChange} />
                     </label>
-                    <button onClick={sendMessage} className='bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-2.5 rounded-full'>
+                    <button onClick={sendMessage} className='bg-gradient-to-br from-indigo-500 to-purple-600 text-white p-2.5 rounded-full hover:from-indigo-600 hover:to-purple-700 transition active:scale-95'>
                         <SendHorizonal size={18} />
                     </button>
                 </div>

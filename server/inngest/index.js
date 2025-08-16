@@ -55,7 +55,7 @@ const syncUserDeletion = inngest.createFunction(
         const { id } = event.data;
         if (!id) return { message: 'Deletion skipped, no ID provided.'};
         await User.findByIdAndDelete(id);
-        // Also delete related data like posts, connections etc. here
+        // Remember to also delete related data like posts, connections etc. here
         return { message: `User ${id} deleted.` };
     }
 );
@@ -65,19 +65,19 @@ const sendNewConnectionRequestReminder = inngest.createFunction(
     { id: 'send-new-connection-request-reminder' },
     { event: 'app/connection-request' },
     async ({ event, step }) => {
-        // ... (This function is well-structured, just ensure the email signature is consistent)
-        // For brevity, the logic is kept the same, just change "PingUp" to "SarvTribe"
+        // ... Add your logic here for sending the reminder email ...
+        // Example: await step.sleep('wait-a-day', '24h');
+        // then send the email.
+        return { message: "Connection reminder logic to be implemented." };
     }
 );
 
 // 5️⃣ Delete Story After 24 Hours
 const deleteStory = inngest.createFunction(
     { id: 'story-delete' },
-    // Corrected event trigger
     { event: 'app/story.created' },
     async ({ event, step }) => {
         const { storyId } = event.data;
-        // The story's `createdAt` timestamp is a more accurate starting point
         const story = await step.run("get-story-creation-time", async () => {
             return await Story.findById(storyId).select("createdAt");
         });
@@ -94,37 +94,61 @@ const deleteStory = inngest.createFunction(
     }
 );
 
-// 6️⃣ Daily Unseen Messages Notification (Optimized)
+// 6️⃣ Daily Unseen Messages Notification (Optimized with Aggregation)
 const sendNotificationOfUnseenMessages = inngest.createFunction(
     { id: "send-unseen-messages-notification" },
-    { cron: "TZ=Asia/Kolkata 0 9 * * *" }, // Example: 9 AM India time
+    { cron: "TZ=Asia/Kolkata 0 9 * * *" }, // 9 AM India time
     async ({ step }) => {
-        const messages = await Message.find({ seen: false }).populate('to_user_id');
-        const unseenCount = {};
-        messages.forEach(message => {
-            const userId = message.to_user_id.id;
-            unseenCount[userId] = (unseenCount[userId] || 0) + 1;
+      
+      const usersWithUnseenMessages = await step.run("get-users-with-unseen-messages", async () => {
+        return await Message.aggregate([
+          // 1. Find all unseen messages
+          { $match: { seen: false } },
+          // 2. Group by the recipient's ID and count the messages for each
+          { 
+            $group: { 
+              _id: "$to_user_id", 
+              unseenCount: { $sum: 1 } 
+            } 
+          },
+          // 3. Join with the User collection to get user details
+          {
+            $lookup: {
+              from: "users", // NOTE: Ensure "users" is the correct name of your collection
+              localField: "_id",
+              foreignField: "_id",
+              as: "userDetails"
+            }
+          },
+          // 4. Deconstruct the userDetails array and handle cases where user might not exist
+          { $unwind: "$userDetails" },
+          // 5. Project to a clean final shape
+          {
+              $project: {
+                  _id: 0,
+                  userId: "$_id",
+                  unseenCount: "$unseenCount",
+                  email: "$userDetails.email",
+                  fullName: "$userDetails.full_name"
+              }
+          }
+        ]);
+      });
+  
+      if (usersWithUnseenMessages.length === 0) {
+        return { message: "No unseen messages today." };
+      }
+  
+      for (const user of usersWithUnseenMessages) {
+        const subject = `You have ${user.unseenCount} unseen messages on SarvTribe`;
+        const body = `<h2>Hi ${user.fullName},</h2><p>You have ${user.unseenCount} unseen messages waiting for you.</p><p>Click <a href="${process.env.FRONTEND_URL}/messages">here</a> to view them.</p><br/><p>Thanks,<br/>The SarvTribe Team</p>`;
+        
+        await step.run(`send-email-to-${user.userId}`, async () => {
+          await sendEmail({ to: user.email, subject, body });
         });
-        
-        const userIds = Object.keys(unseenCount);
-        if (userIds.length === 0) {
-            return { message: "No unseen messages today." };
-        }
-
-        // --- OPTIMIZATION ---
-        // Fetch all users in a single query instead of N+1 queries in a loop
-        const users = await User.find({ '_id': { $in: userIds } });
-        
-        for (const user of users) {
-            const subject = `You have ${unseenCount[user._id]} unseen messages on SarvTribe`;
-            const body = `<h2>Hi ${user.full_name},</h2><p>You have ${unseenCount[user._id]} unseen messages waiting for you.</p><p>Click <a href="${process.env.FRONTEND_URL}/messages">here</a> to view them.</p><br/><p>Thanks,<br/>The SarvTribe Team</p>`;
-            
-            await step.run(`send-email-to-${user._id}`, async () => {
-                await sendEmail({ to: user.email, subject, body });
-            });
-        }
-
-        return { message: `Notifications sent to ${users.length} users.` };
+      }
+  
+      return { message: `Notifications sent to ${usersWithUnseenMessages.length} users.` };
     }
 );
 

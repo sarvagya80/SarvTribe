@@ -1,71 +1,87 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import api from '../../api/axios.js';
-// Toasts will be handled in the component, so we don't need to import it here.
 
 const initialState = {
-  value: null,
-  status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
-  error: null,
+    data: null,
+    status: 'idle', // 'idle' | 'loading' | 'succeeded' | 'failed'
+    error: null,
 };
 
-// Refactor the fetchUser thunk to handle errors
-export const fetchUser = createAsyncThunk(
-  'user/fetchUser',
-  async (token, { rejectWithValue }) => {
-    try {
-      const { data } = await api.get('/api/user/data', {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // The controller now sends a 404 which will be caught below,
-      // so we only need to return the user data on success.
-      return data.user;
-    } catch (error) {
-      // Pass the backend's error message to the rejected action
-      return rejectWithValue(error.response?.data?.message || 'Failed to fetch user data.');
+// ✅ RESTORED: Full implementation of async thunks
+export const fetchMe = createAsyncThunk(
+    'user/fetchMe',
+    async (_, { rejectWithValue }) => {
+        try {
+            const { data } = await api.get('/api/user/me');
+            return data.user;
+        } catch (error) {
+            return rejectWithValue(error.response?.data?.message || 'Failed to fetch user data.');
+        }
     }
-  }
 );
 
-// Updates user profile data
 export const updateUser = createAsyncThunk(
-  'user/update',
-  async ({ userData, token }, { rejectWithValue }) => {
-    try {
-      const { data } = await api.post('/api/user/update', userData, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
-      // The thunk now returns the full data object on success
-      // so the component can access the success message for the toast.
-      return data;
-    } catch (error) {
-      return rejectWithValue(error.response?.data || 'Failed to update profile.');
+    'user/updateUser',
+    async (userData, { rejectWithValue }) => {
+        try {
+            const { data } = await api.patch('/api/user/update', userData);
+            return data;
+        } catch (error) {
+            return rejectWithValue(error.response?.data || 'Failed to update profile.');
+        }
     }
-  }
 );
 
 const userSlice = createSlice({
     name: 'user',
     initialState,
     reducers: {
-        // ... your other reducers like startFollowing ...
+        logoutUser: (state) => {
+            state.data = null;
+            state.status = 'idle';
+            state.error = null;
+        },
+        startFollowing: (state, action) => {
+            const userIdToFollow = action.payload;
+            if (state.data && !state.data.following.includes(userIdToFollow)) {
+                state.data.following.push(userIdToFollow);
+            }
+        },
+        revertFollow: (state, action) => {
+            const userIdToUnfollow = action.payload;
+            if (state.data) {
+                state.data.following = state.data.following.filter(id => id !== userIdToUnfollow);
+            }
+        }
     },
     extraReducers: (builder) => {
         builder
-            .addCase(fetchUser.pending, (state) => {
+            // Fetch Me
+            .addCase(fetchMe.pending, (state) => {
                 state.status = 'loading';
             })
-            .addCase(fetchUser.fulfilled, (state, action) => {
+            .addCase(fetchMe.fulfilled, (state, action) => {
                 state.status = 'succeeded';
-                state.value = action.payload; // This is the user object
+                state.data = action.payload;
             })
-            .addCase(fetchUser.rejected, (state, action) => {
+            .addCase(fetchMe.rejected, (state, action) => {
                 state.status = 'failed';
-                state.error = action.payload; // This will contain the error message
+                state.error = action.payload;
+            })
+            // Update User
+            .addCase(updateUser.pending, (state) => {
+                // Optional: handle loading state for updates if needed
+            })
+            .addCase(updateUser.fulfilled, (state, action) => {
+                state.status = 'succeeded';
+                state.data = action.payload.user;
+            })
+            .addCase(updateUser.rejected, (state, action) => {
+                state.status = 'failed';
+                state.error = action.payload;
             });
-        // ... your other extraReducers for updateUser etc.
     }
 });
 
-// This is the corrected line
 export const { logoutUser, startFollowing, revertFollow } = userSlice.actions;
 export default userSlice.reducer;

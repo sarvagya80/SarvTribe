@@ -1,37 +1,49 @@
 import axios from 'axios';
-// You might need to import your Redux store or a logout action
-// import { store } from '../app/Store';
-// import { logoutUser } from '../features/user/userSlice';
+
+// ✅ REMOVED: The incorrect import for Clerk, as we'll use the global instance.
+// import { Clerk } from '@clerk/clerk-react';
+
+// ✅ REMOVED: The incorrect manual instantiation of Clerk.
+// export const clerk = new Clerk(import.meta.env.VITE_CLERK_PUBLISHABLE_KEY);
 
 const api = axios.create({
     baseURL: import.meta.env.VITE_BASEURL,
     headers: {
-      'Content-Type': 'application/json',
+        'Content-Type': 'application/json',
     }
 });
 
-// Intercept responses before they are handled by your components or thunks
-api.interceptors.response.use(
-  // If the response is successful (status 2xx), just return it
-  (response) => response,
-  
-  // If the response is an error
-  (error) => {
-    // Check if the error is a 401 Unauthorized
-    if (error.response && error.response.status === 401) {
-      // Here, you would dispatch a logout action to clear the user's state
-      // and redirect them to the login page.
-      // Example: store.dispatch(logoutUser());
-      console.error("Authentication Error: Logging out user.", error);
-      // You could also trigger a redirect here if needed
-      // window.location.href = '/login';
+// Intercept REQUESTS before they are sent
+api.interceptors.request.use(
+    async (config) => {
+        try {
+            // ✅ CHANGED: Access the session token from the global window.Clerk instance.
+            // This is the standard way to get the token outside of a React component.
+            const token = await window.Clerk.session?.getToken();
+
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (error) {
+            console.error("Error fetching Clerk token:", error);
+        }
+        return config;
+    },
+    (error) => {
+        return Promise.reject(error);
     }
-    
-    // For all other errors, we'll just pass the error along
-    // The .reject ensures the promise is rejected, triggering the .catch()
-    // or the 'rejected' case in your async thunks.
-    return Promise.reject(error);
-  }
+);
+
+// Intercept RESPONSES to handle global errors
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        if (error.response && error.response.status === 401) {
+            console.error("Authentication Error: The request was unauthorized.", error.response);
+            // Clerk's <ClerkProvider> will handle the session timeout and redirect automatically.
+        }
+        return Promise.reject(error);
+    }
 );
 
 export default api;

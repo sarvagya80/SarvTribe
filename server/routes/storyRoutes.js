@@ -1,19 +1,14 @@
 import express from 'express';
-import { upload } from '../configs/multer.js';
-import { protect } from '../middlewares/auth.js';
-import { addUserStory, getStories } from '../controllers/storycontroller.js';
+import { createStory, getStories } from '../controllers/storyController.js';
+import { clerkProtect } from '../middlewares/auth.js';
+import { upload } from '../middlewares/multer.js';
 
 const storyRouter = express.Router();
 
-// Route to create a new story
-storyRouter.post(
-    '/create',
-    protect, // 1. Authenticate the user first
-    upload.single('media'), // 2. Then, process the file upload
-    addUserStory
-);
+// 🔒 Get stories for the user's feed
+storyRouter.get('/', clerkProtect, getStories);
 
-// Route to get the stories feed
-storyRouter.get('/get', protect, getStories);
+// 🔒 Create a new story
+storyRouter.post('/create', clerkProtect, upload.single('media'), createStory);
 
 export default storyRouter;

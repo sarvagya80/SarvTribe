@@ -2,10 +2,10 @@ import Post from "../models/Post.js";
 import User from "../models/User.js";
 import imagekit from "../configs/imagekit.js";
 
-// Add Post
-export const addPost = async (req, res, next) => {
+// Create a new post
+export const createPost = async (req, res, next) => {
     try {
-        const { userId } = req.auth(); // Correctly get userId
+        const { userId } = req.auth;
         const { content, post_type } = req.body;
         const images = req.files || [];
         let image_urls = [];
@@ -14,8 +14,8 @@ export const addPost = async (req, res, next) => {
             image_urls = await Promise.all(
                 images.map(async (image) => {
                     const response = await imagekit.upload({
-                        file: image.buffer, // Use buffer from memoryStorage
-                        fileName: image.originalname,
+                        file: image.buffer,
+                        fileName: `post_${userId}_${Date.now()}`,
                         folder: 'posts',
                     });
                     return response.url;
@@ -23,7 +23,7 @@ export const addPost = async (req, res, next) => {
             );
         }
 
-        await Post.create({
+        const newPost = await Post.create({
             user: userId,
             content,
             image_urls,
@@ -33,63 +33,60 @@ export const addPost = async (req, res, next) => {
         res.status(201).json({
             success: true,
             message: "Post created successfully",
+            post: newPost
         });
-    } catch (error) {
-        next(error); // Pass error to central handler
-    }
-};
-
-// Get Posts for the Feed
-export const getFeedPosts = async (req, res, next) => {
-    try {
-        const { userId } = req.auth();
-        const user = await User.findById(userId);
-
-        // --- ADD THIS CHECK ---
-        if (!user) {
-            // If user isn't found yet, return an empty feed.
-            return res.json({ success: true, posts: [] });
-        }
-        // --- END OF CHECK ---
-
-        const userIds = [userId, ...user.connections, ...user.following];
-        const posts = await Post.find({ user: { $in: userIds } })
-            .populate("user", "full_name username profile_picture isVerified")
-            .sort({ createdAt: -1 });
-
-        res.json({ success: true, posts });
     } catch (error) {
         next(error);
     }
 };
 
-// Like / Unlike Post
-export const likePost = async (req, res, next) => {
+// Get posts for the user's feed
+export const getFeedPosts = async (req, res, next) => {
     try {
-        const { userId } = req.auth(); // Correctly get userId
-        const { postId } = req.body;
+        const { userId } = req.auth;
+
+        // Find the current user to get their 'following' list
+        const currentUser = await User.findById(userId).select('following');
+        if (!currentUser) {
+            return res.status(404).json({ success: false, message: "User not found." });
+        }
+
+        // Create a list of users whose posts should be in the feed (self + followed users)
+        const feedUserIds = [userId, ...currentUser.following];
+
+        const posts = await Post.find({ user: { $in: feedUserIds } })
+            .populate('user', 'full_name username profile_picture')
+            .sort({ createdAt: -1 });
+
+        res.json({ success: true, posts });
+    } catch (err) {
+        next(err);
+    }
+};
+
+// Like or unlike a post
+export const likeUnlikePost = async (req, res, next) => {
+    try {
+        const { userId } = req.auth;
+        const { postId } = req.params; // Get postId from URL parameters for RESTful design
 
         const post = await Post.findById(postId);
         if (!post) {
             return res.status(404).json({ success: false, message: "Post not found" });
         }
 
-        // Use the correct field name 'likes' from the schema
         const isLiked = post.likes.includes(userId);
 
         if (isLiked) {
-            // Unlike the post
-            post.likes = post.likes.filter(id => id.toString() !== userId.toString());
-            await post.save();
+            // Unlike
+            await post.updateOne({ $pull: { likes: userId } });
             res.json({ success: true, message: "Post unliked" });
         } else {
-            // Like the post
-            post.likes.push(userId);
-            await post.save();
-            // --- CRITICAL FIX: Added the missing response ---
+            // Like
+            await post.updateOne({ $addToSet: { likes: userId } });
             res.json({ success: true, message: "Post liked" });
         }
     } catch (error) {
-        next(error); // Pass error to central handler
+        next(error);
     }
 };

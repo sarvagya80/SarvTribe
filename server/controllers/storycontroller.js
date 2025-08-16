@@ -1,67 +1,76 @@
-import imagekit from "../configs/imagekit.js";
-import Story from "../models/Story.js";
+import imagekit from '../configs/imagekit.js';
+import Story from '../models/Story.js';
 import User from '../models/User.js';
-import { inngest } from "../inngest/index.js";
+import { inngest } from '../inngest/index.js';
 
-// Add User Story
-export const addUserStory = async (req, res, next) => {
+// Create a new story
+export const createStory = async (req, res, next) => {
     try {
-        const { userId } = req.auth(); // Correctly get userId from the auth object
+        const { userId } = req.auth;
         const { content, media_type, background_color } = req.body;
-        const media = req.file; // From upload.single('media')
-        let media_url = "";
+        const media = req.file;
+        let media_url = '';
 
-        // Upload media to ImageKit if it's an image or video
-        if (media && (media_type === "image" || media_type === "video")) {
-            const response = await imagekit.upload({
-                file: media.buffer, // Use the file buffer from memoryStorage
-                fileName: media.originalname,
+        if (media && (media_type === 'image' || media_type === 'video')) {
+            const uploaded = await imagekit.upload({
+                file: media.buffer,
+                fileName: `story_${userId}_${Date.now()}`,
+                folder: 'stories',
             });
-            media_url = response.url;
+            media_url = uploaded.url;
         }
 
-        // Create new story
         const story = await Story.create({
             user: userId,
-            content,
-            media_type,
-            background_color,
+            content: content || '',
+            media_type: media_type || 'text',
+            background_color: background_color || '#4f46e5',
             media_url,
         });
 
-        // Schedule story deletion after 24 hours
-        await inngest.send({
-            name: 'app/story.created', // Use the logical event name
-            data: { storyId: story._id }
-        });
+        // Trigger Inngest function to delete story after 24 hours
+        await inngest.send({ name: 'app/story.created', data: { storyId: story._id.toString() } });
 
-        res.status(201).json({ success: true, message: "Story created successfully." });
-    } catch (error) {
-        next(error); // Pass errors to the central handler
+        res.status(201).json({ success: true, message: 'Story created successfully.', story });
+    } catch (err) {
+        next(err);
     }
 };
 
-// Get User Stories Feed
+// Get stories for the user's feed
 export const getStories = async (req, res, next) => {
     try {
-        const { userId } = req.auth(); // Correctly get userId
-        const user = await User.findById(userId);
+        const { userId } = req.auth;
+        const currentUser = await User.findById(userId).select('connections following');
 
-        if (!user) {
-            // You can return an empty array or an error.
-            // Returning an empty array is often better for the frontend.
+        if (!currentUser) {
             return res.json({ success: true, stories: [] });
         }
 
-        // Find stories from the user, their connections, and people they follow
-        const userIds = [userId, ...user.connections, ...user.following];
+        // User sees their own stories and stories from people they follow or are connected with
+        const storyAuthors = [userId, ...currentUser.connections, ...currentUser.following];
+        const uniqueAuthors = [...new Set(storyAuthors.map(id => id.toString()))];
 
-        const stories = await Story.find({ user: { $in: userIds } })
-            .populate("user", "full_name username profile_picture isVerified") // Select specific fields
+        const stories = await Story.find({ user: { $in: uniqueAuthors } })
+            .populate('user', 'full_name username profile_picture')
             .sort({ createdAt: -1 });
+        
+        // Optional: Group stories by user
+        const storiesByUser = stories.reduce((acc, story) => {
+            const authorId = story.user._id.toString();
+            if (!acc[authorId]) {
+                acc[authorId] = {
+                    user: story.user,
+                    stories: []
+                };
+            }
+            acc[authorId].stories.push(story);
+            return acc;
+        }, {});
 
-        res.json({ success: true, stories });
-    } catch (error) {
-        next(error); // Pass errors to the central handler
+
+        res.json({ success: true, stories: Object.values(storiesByUser) });
+    } catch (err) {
+        next(err);
     }
 };

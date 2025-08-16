@@ -1,22 +1,17 @@
 import express from 'express';
-import { upload } from '../configs/multer.js';
-import { protect } from '../middlewares/auth.js';
-import { addPost, getFeedPosts, likePost } from '../controllers/postcontroller.js';
+import { upload } from '../middlewares/multer.js';
+import { clerkProtect } from '../middlewares/auth.js';
+import { createPost, getFeedPosts, likeUnlikePost } from '../controllers/postController.js';
 
 const postRouter = express.Router();
 
-// Route to add a new post
-postRouter.post(
-    '/add',
-    protect, // 1. Authenticate first
-    upload.array('images', 4), // 2. Then process up to 4 images
-    addPost
-);
+// 🔒 Get personalized feed posts (requires login)
+postRouter.get('/feed', clerkProtect, getFeedPosts);
 
-// Route to get the user's feed
-postRouter.get('/feed', protect, getFeedPosts);
+// 🔒 Create a new post
+postRouter.post('/', clerkProtect, upload.array('images', 4), createPost);
 
-// Route to like/unlike a post
-postRouter.post('/like', protect, likePost);
+// 🔒 Like or unlike a specific post
+postRouter.patch('/:postId/like', clerkProtect, likeUnlikePost);
 
 export default postRouter;

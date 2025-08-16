@@ -1,23 +1,36 @@
+// routes/messageRoutes.js
 import express from 'express';
-import { getChatMessages, sendMessage, sseController } from '../controllers/Messagecontroller.js';
-import { upload } from '../configs/multer.js';
-import { protect } from '../middlewares/auth.js';
+import {
+    getChatMessages,
+    getConversations,
+    sendMessage,
+    sseController
+} from '../controllers/messageController.js';
+import { upload } from '../middlewares/multer.js';
+import { clerkProtect } from '../middlewares/auth.js';
 
 const messageRouter = express.Router();
 
-// SSE for live chat updates
-// CRITICAL: Added 'protect' middleware to secure this endpoint
-messageRouter.get('/:userId', protect, sseController);
+// Middleware to handle token from query parameter for SSE
+const sseAuthMiddleware = (req, res, next) => {
+    const { token } = req.query;
+    if (token) {
+        // Attach the token as a Bearer token in the headers
+        req.headers.authorization = `Bearer ${token}`;
+    }
+    next();
+};
 
-// Send a new message
-messageRouter.post(
-    '/send',
-    protect, // 1. Authenticate first
-    upload.single('image'), // 2. Then process the upload
-    sendMessage
-);
+// 🔒 Establish SSE connection (using the new middleware first)
+messageRouter.get('/stream', sseAuthMiddleware, clerkProtect, sseController);
 
-// Get chat messages between users
-messageRouter.post('/get', protect, getChatMessages);
+// 🔒 Get a list of all conversations for the logged-in user
+messageRouter.get('/conversations', clerkProtect, getConversations);
+
+// 🔒 Get the chat history with a specific user
+messageRouter.get('/chat/:otherUserId', clerkProtect, getChatMessages);
+
+// 🔒 Send a new message
+messageRouter.post('/send', clerkProtect, upload.single('image'), sendMessage);
 
 export default messageRouter;
