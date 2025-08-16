@@ -5,14 +5,15 @@ import { serve } from 'inngest/express';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import rateLimit from 'express-rate-limit';
+import { clerkMiddleware } from "@clerk/express";
 
 import connectDB from './configs/db.js';
 import { inngest, functions } from './inngest/index.js';
 import userRouter from './routes/userRoutes.js';
-import postRouter from './routes/postRoutes.js';
+import postRouter from './routes/postRoutes.js'; // Ensure this filename is correct
 import storyRoutes from "./routes/storyRoutes.js";
 import messageRouter from './routes/messageRoutes.js';
-import { clerkMiddleware } from "@clerk/express"; // ✅ add this
+
 const app = express();
 
 try {
@@ -21,13 +22,13 @@ try {
   console.error("Failed to connect to DB:", error);
   process.exit(1);
 }
+
 app.use(clerkMiddleware());
 app.use(helmet());
 app.use(morgan('dev'));
 app.use(cors({ origin: process.env.CLIENT_URL, credentials: true }));
 app.use(express.json({ limit: '10kb' }));
 
-// Rate limiter
 const limiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 100 });
 app.use('/api', limiter);
 

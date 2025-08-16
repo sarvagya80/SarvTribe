@@ -18,7 +18,7 @@ const sseConnections = {};
 // Controller for Server-Sent Events (SSE) connection
 export const sseController = (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
         
         res.setHeader('Content-Type', 'text/event-stream');
         res.setHeader('Cache-Control', 'no-cache');
@@ -50,7 +50,7 @@ export const sseController = (req, res, next) => {
 // Send a new message
 export const sendMessage = async (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
         const { to_user_id, text } = req.body;
         const image = req.file;
 
@@ -92,7 +92,7 @@ export const sendMessage = async (req, res, next) => {
 // Get chat history between two users
 export const getChatMessages = async (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
         const { otherUserId } = req.params; // Get other user's ID from URL parameters
 
         const messages = await Message.find({
@@ -117,7 +117,7 @@ export const getChatMessages = async (req, res, next) => {
 // Get a list of recent conversations
 export const getConversations = async (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
 
         // This is a more advanced query to get a list of unique conversations
         const conversations = await Message.aggregate([

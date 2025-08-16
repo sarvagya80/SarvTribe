@@ -5,7 +5,7 @@ import imagekit from "../configs/imagekit.js";
 // Create a new post
 export const createPost = async (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
         const { content, post_type } = req.body;
         const images = req.files || [];
         let image_urls = [];
@@ -43,7 +43,7 @@ export const createPost = async (req, res, next) => {
 // Get posts for the user's feed
 export const getFeedPosts = async (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
 
         // Find the current user to get their 'following' list
         const currentUser = await User.findById(userId).select('following');
@@ -67,7 +67,7 @@ export const getFeedPosts = async (req, res, next) => {
 // Like or unlike a post
 export const likeUnlikePost = async (req, res, next) => {
     try {
-        const { userId } = req.auth;
+        const { userId } = req.auth();
         const { postId } = req.params; // Get postId from URL parameters for RESTful design
 
         const post = await Post.findById(postId);

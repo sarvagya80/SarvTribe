@@ -1,3 +1,5 @@
+// server/routes/userRoutes.js
+
 import express from 'express';
 import {
     acceptConnectionRequest,
@@ -15,11 +17,12 @@ import { upload } from '../middlewares/multer.js';
 
 const userRouter = express.Router();
 
-// 🔒 Get the logged-in user's own profile data
+// ✅ THIS IS THE KEY: Specific routes like '/me' and '/network' MUST come first.
 userRouter.get('/me', clerkProtect, getMe);
+userRouter.get('/network', clerkProtect, getUserNetwork);
 
-// 🔒 Update the logged-in user's profile
-userRouter.patch( // Using PATCH for partial updates is more conventional
+// --- All other routes can follow ---
+userRouter.patch(
     '/update',
     clerkProtect,
     upload.fields([
@@ -29,21 +32,13 @@ userRouter.patch( // Using PATCH for partial updates is more conventional
     updateUserData
 );
 
-// 🔒 Discover other users via search
 userRouter.post('/discover', clerkProtect, discoverUsers);
-
-// 🔒 Follow and unfollow users
 userRouter.post('/follow', clerkProtect, followUser);
 userRouter.post('/unfollow', clerkProtect, unfollowUser);
-
-// 🔒 Manage connection requests
 userRouter.post('/connect/send', clerkProtect, sendConnectionRequest);
 userRouter.post('/connect/accept', clerkProtect, acceptConnectionRequest);
 
-// 🔒 Get the user's entire network (connections, followers, etc.)
-userRouter.get('/network', clerkProtect, getUserNetwork);
-
-// ✅ Public route to view any user's profile
-userRouter.get('/:profileId', getUserProfile);
+// ✅ AND THIS IS KEY: Generic routes with parameters MUST come last.
+userRouter.get('/:profileId', clerkProtect, getUserProfile);
 
 export default userRouter;
