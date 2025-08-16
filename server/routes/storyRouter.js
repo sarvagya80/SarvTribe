@@ -1,5 +1,5 @@
 import express from 'express';
-import { createStory, getStories } from '../controllers/storycontroller.js';
+import { createStory, getStories } from '../controllers/storyController.js';
 import { clerkProtect } from '../middlewares/auth.js';
 import { upload } from '../middlewares/multer.js';
 

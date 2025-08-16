@@ -4,7 +4,7 @@ import { upload } from '../middlewares/multer.js';
 import { clerkProtect } from '../middlewares/auth.js';
 
 // ✅ THIS IMPORT MUST EXACTLY MATCH YOUR FILE/FOLDER NAMES
-import { createPost, getFeedPosts, likeUnlikePost } from '../controllers/postcontroller.js';
+import { createPost, getFeedPosts, likeUnlikePost } from '../controllers/postController.js';
 
 const postRouter = express.Router();
 
