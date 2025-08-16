@@ -1,6 +1,9 @@
+// server/routes/postRouter.js
 import express from 'express';
 import { upload } from '../middlewares/multer.js';
 import { clerkProtect } from '../middlewares/auth.js';
+
+// ✅ THIS IMPORT MUST EXACTLY MATCH YOUR FILE/FOLDER NAMES
 import { createPost, getFeedPosts, likeUnlikePost } from '../controllers/postcontroller.js';
 
 const postRouter = express.Router();

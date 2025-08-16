@@ -5,7 +5,7 @@ import {
     getConversations,
     sendMessage,
     sseController
-} from '../controllers/messageController.js';
+} from '../controllers/messagecontroller.js';
 import { upload } from '../middlewares/multer.js';
 // ✅ CHANGED: Import 'verifyToken' in addition to 'clerkProtect'
 import { clerkProtect, verifyToken } from '../middlewares/auth.js';
