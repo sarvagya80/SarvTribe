@@ -11,7 +11,7 @@ import {
     sendConnectionRequest,
     unfollowUser,
     updateUserData,
-} from '../controllers/userController.js';
+} from '../controllers/usercontroller.js';
 import { clerkProtect } from '../middlewares/auth.js';
 import { upload } from '../middlewares/multer.js';
 

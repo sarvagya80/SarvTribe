@@ -11,7 +11,7 @@ import connectDB from './configs/db.js';
 import { inngest, functions } from './inngest/index.js';
 import userRouter from './routes/userRouter.js';
 import postRouter from './routes/postRouter.js'; // Ensure this filename is correct
-import storyRoutes from "./routes/storyRouter.js";
+import storyRouter from "./routes/storyRouter.js";
 import messageRouter from './routes/messageRouter.js';
 
 const app = express();
