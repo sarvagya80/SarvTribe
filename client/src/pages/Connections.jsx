@@ -1,7 +1,7 @@
 // src/pages/Connections.jsx
 
 import React, { useState } from 'react';
-import { Users, UserPlus, UserCheck, Edit, MessageSquare } from 'lucide-react';
+import { Users, UserPlus, UserCheck, Edit, MessageSquare,X } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import toast from 'react-hot-toast';
@@ -44,6 +44,16 @@ const Connections = () => {
             toast.success("Connection accepted!");
         } catch (error) {
             toast.error(error.response?.data?.message || "Failed to accept connection.");
+        }
+    };
+
+     const handleDecline = async (requesterId) => {
+        try {
+            await api.post('/api/user/connect/decline', { requesterId });
+            dispatch(fetchUserNetwork()); // Refetch to update all lists
+            toast.success("Connection request declined.");
+        } catch (error) {
+            toast.error(error.response?.data?.message || "Failed to decline request.");
         }
     };
 
@@ -103,6 +113,17 @@ const Connections = () => {
                                     <button onClick={() => navigate(`/messages/${user._id}`)} className="px-4 py-2 text-sm bg-indigo-50 text-indigo-700 rounded-full hover:bg-indigo-100 font-semibold flex items-center gap-2">
                                         <MessageSquare className="w-4 h-4" /> Message
                                     </button>
+                                )}
+                                 {currentTab === 'Pending' && (
+                                    <>
+                                        <button onClick={() => acceptConnection(user)} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-full hover:bg-indigo-700 font-semibold">
+                                            Accept
+                                        </button>
+                                        {/* ✅ ADDED: Decline button */}
+                                        <button onClick={() => handleDecline(user._id)} className="size-9 flex items-center justify-center border border-gray-300 text-gray-500 rounded-full hover:bg-gray-100">
+                                            <X className="w-4 h-4" />
+                                        </button>
+                                    </>
                                 )}
                             </div>
                         </div>

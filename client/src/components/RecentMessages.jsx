@@ -1,12 +1,9 @@
-// src/components/RecentMessages.jsx
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import moment from 'moment';
 import { useSelector } from 'react-redux';
 
 const RecentMessages = () => {
-    // Data is read directly from the Redux store, which is updated in real-time.
     const conversations = useSelector((state) => state.conversations.list);
     const currentUser = useSelector((state) => state.user.data);
 
@@ -35,31 +32,32 @@ const RecentMessages = () => {
             <h3 className='font-semibold mb-4 text-gray-800'>Recent Messages</h3>
             <div className='flex flex-col max-h-80 overflow-y-auto space-y-1'>
                 {conversations.length > 0 ? (
-                    conversations.map((convo) => {
-                        // Determine the other user in the conversation.
-                        const otherUser = convo.from_user._id === currentUser._id 
-                            ? convo.to_user 
-                            : convo.from_user;
+                    conversations
+                        // ✅ FIXED: Add a filter to safely ignore conversations with deleted users
+                        .filter(convo => convo.from_user_id && convo.to_user_id)
+                        .map((convo) => {
+                            const otherUser = convo.from_user_id._id === currentUser._id 
+                                ? convo.to_user_id 
+                                : convo.from_user_id;
 
-                        return (
-                            <Link to={`/messages/${otherUser._id}`} key={convo._id} className='flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50'>
-                                <img src={otherUser.profile_picture} className='w-10 h-10 rounded-full object-cover' alt={`${otherUser.full_name}'s profile`} />
-                                <div className='w-full overflow-hidden'>
-                                    <div className='flex justify-between items-center'>
-                                        <p className='font-semibold text-sm text-gray-800 truncate'>{otherUser.full_name}</p>
-                                        <p className='text-xs text-gray-400 flex-shrink-0'>{moment(convo.createdAt).fromNow(true)}</p>
+                            return (
+                                <Link to={`/messages/${otherUser._id}`} key={convo._id} className='flex items-start gap-3 p-2 rounded-lg hover:bg-gray-50'>
+                                    <img src={otherUser.profile_picture} className='w-10 h-10 rounded-full object-cover' alt={`${otherUser.full_name}'s profile`} />
+                                    <div className='w-full overflow-hidden'>
+                                        <div className='flex justify-between items-center'>
+                                            <p className='font-semibold text-sm text-gray-800 truncate'>{otherUser.full_name}</p>
+                                            <p className='text-xs text-gray-400 flex-shrink-0'>{moment(convo.createdAt).fromNow(true)}</p>
+                                        </div>
+                                        <div className='flex justify-between items-center'>
+                                            <p className='text-sm text-gray-500 truncate'>{convo.text ? convo.text : 'Media'}</p>
+                                            {!convo.seen && convo.to_user_id._id === currentUser._id && (
+                                                <span className='bg-indigo-500 w-2.5 h-2.5 rounded-full flex-shrink-0'></span>
+                                            )}
+                                        </div>
                                     </div>
-                                    <div className='flex justify-between items-center'>
-                                        <p className='text-sm text-gray-500 truncate'>{convo.text ? convo.text : 'Media'}</p>
-                                        {/* Show an indicator for unread messages. */}
-                                        {!convo.seen && convo.to_user._id === currentUser._id && (
-                                            <span className='bg-indigo-500 w-2.5 h-2.5 rounded-full flex-shrink-0'></span>
-                                        )}
-                                    </div>
-                                </div>
-                            </Link>
-                        )
-                    })
+                                </Link>
+                            )
+                        })
                 ) : (
                     <p className="text-sm text-gray-400 text-center py-4">No recent conversations.</p>
                 )}

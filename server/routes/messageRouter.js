@@ -1,4 +1,5 @@
-// routes/messageRoutes.js
+// src/routes/messageRouter.js
+
 import express from 'express';
 import {
     getChatMessages,
@@ -7,12 +8,11 @@ import {
     sseController
 } from '../controllers/MessageController.js';
 import { upload } from '../middlewares/multer.js';
-// ✅ CHANGED: Import 'verifyToken' in addition to 'clerkProtect'
-import { clerkProtect, verifyToken } from '../middlewares/auth.js';
+import { clerkProtect } from '../middlewares/auth.js';
 
 const messageRouter = express.Router();
 
-// This middleware to get the token from the query is still correct.
+// Middleware to get the token from the query for the SSE connection
 const sseAuthMiddleware = (req, res, next) => {
     const { token } = req.query;
     if (token) {
@@ -21,10 +21,8 @@ const sseAuthMiddleware = (req, res, next) => {
     next();
 };
 
-// ✅ CHANGED: Use 'verifyToken' for the stream instead of 'clerkProtect'
-messageRouter.get('/stream', sseAuthMiddleware, verifyToken, sseController);
-
-// All other routes correctly use the standard 'clerkProtect'
+// All routes are now protected by the standard clerkProtect middleware
+messageRouter.get('/stream', sseAuthMiddleware, clerkProtect, sseController);
 messageRouter.get('/conversations', clerkProtect, getConversations);
 messageRouter.get('/chat/:otherUserId', clerkProtect, getChatMessages);
 messageRouter.post('/send', clerkProtect, upload.single('image'), sendMessage);

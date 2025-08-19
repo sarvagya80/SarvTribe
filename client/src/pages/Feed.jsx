@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import toast from 'react-hot-toast';
 
+import CreatorCredit from '../components/CreatorCredit';
 import Loading from '../components/Loading';
 import StoriesBar from '../components/StoriesBar';
 import PostCard from '../components/PostCard';
@@ -43,9 +44,8 @@ const Feed = () => {
         return <Loading />;
     }
     
-    // ✅ This is the corrected outer div that removes the layout conflict.
     return (
-        <div className="flex justify-center gap-8 px-4 py-6 sm:py-8">
+        <div className="h-full overflow-y-auto no-scrollbar py-6 sm:py-8 flex justify-center gap-8 px-4">
             <div className="flex-1 max-w-xl flex flex-col gap-6">
                 <StoriesBar />
                 
@@ -59,8 +59,16 @@ const Feed = () => {
                 )}
             </div>
             
-            <div className="w-80 hidden lg:block">
+            {/* Right Sidebar */}
+            <div className="w-80 hidden lg:block space-y-4">
                 <RecentMessages />
+                <CreatorCredit />
+
+                {/* ✅ ADDED: Creator credit section */}
+                <div className="text-center text-xs text-gray-400 p-4 bg-white rounded-lg shadow">
+                    <p>Created by Sarvagya Pathak</p>
+                    
+                </div>
             </div>
         </div>
     );

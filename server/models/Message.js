@@ -16,12 +16,11 @@ const messageSchema = new mongoose.Schema(
     { timestamps: true }
 );
 
-// --- PERFORMANCE: Add indexes for fast conversation lookups ---
+// Add indexes for fast conversation lookups and sorting
 messageSchema.index({ from_user_id: 1, to_user_id: 1 });
 messageSchema.index({ createdAt: -1 });
 
-
-// --- DATA INTEGRITY: Ensure messages are not empty before saving ---
+// Ensure messages are not empty before saving
 messageSchema.pre('save', function(next) {
     if (this.message_type === 'text' && !this.text?.trim()) {
         return next(new Error('Text content cannot be empty for a text message.'));

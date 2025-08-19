@@ -11,6 +11,7 @@ import {
     sendConnectionRequest,
     unfollowUser,
     updateUserData,
+     declineConnectionRequest,
 } from '../controllers/userController.js';
 import { clerkProtect } from '../middlewares/auth.js';
 import { upload } from '../middlewares/multer.js';
@@ -36,7 +37,7 @@ userRouter.post('/follow', clerkProtect, followUser);
 userRouter.post('/unfollow', clerkProtect, unfollowUser);
 userRouter.post('/connect/send', clerkProtect, sendConnectionRequest);
 userRouter.post('/connect/accept', clerkProtect, acceptConnectionRequest); // 👈 2. Add this line
-
+userRouter.post('/connect/decline', clerkProtect, declineConnectionRequest);
 // --- Generic routes with parameters last ---
 userRouter.get('/:profileId', clerkProtect, getUserProfile);
 

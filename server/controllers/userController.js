@@ -4,12 +4,13 @@ import Connection from '../models/Connection.js';
 import User from '../models/User.js';
 import Post from '../models/Post.js';
 import { inngest } from '../inngest/index.js';
+import { sendSseEvent } from '../utils/sse.js'; // 👈 Import the SSE utility
 
 // Get logged-in user data
 export const getMe = async (req, res, next) => {
     try {
         const { userId } = req.auth();
-        const user = await User.findById(userId);
+        const user = await User.findById(userId).lean(); // ✅ Added .lean() for performance
         if (!user) {
             return res.status(404).json({ success: false, message: 'User profile not found in database.' });
         }
@@ -20,32 +21,31 @@ export const getMe = async (req, res, next) => {
 };
 
 // Update user data
-// ... (keep all your other controller functions)
-
 export const updateUserData = async (req, res, next) => {
     try {
         const { userId } = req.auth();
-        const { full_name, username, bio, location } = req.body;
-        const updates = { full_name, username, bio, location };
+        const { username, bio, location, full_name } = req.body;
+        const updates = { bio, location, full_name };
 
-        if (req.files) {
-            if (req.files.profile) {
-                const response = await imagekit.upload({ file: req.files.profile[0].buffer, fileName: `profile_${userId}`, folder: 'avatars' });
-                updates.profile_picture = response.url;
+        if (username) {
+            const existingUser = await User.findOne({ username }).lean();
+            if (existingUser && existingUser._id.toString() !== userId) {
+                return res.status(409).json({ success: false, message: 'Username is already taken.' });
             }
-            if (req.files.cover) {
-                const response = await imagekit.upload({ file: req.files.cover[0].buffer, fileName: `cover_${userId}`, folder: 'covers' });
-                updates.cover_photo = response.url;
-            }
+            updates.username = username;
         }
 
-        const updatedUser = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true });
-        if (!updatedUser) {
-            return res.status(404).json({ success: false, message: "User not found." });
+        if (req.files?.profile) {
+            const response = await imagekit.upload({ file: req.files.profile[0].buffer, fileName: `profile_${userId}`, folder: 'avatars' });
+            updates.profile_picture = response.url;
         }
-        
-        // This is the successful response the frontend will receive
-        res.status(200).json({ success: true, message: "Profile updated successfully!", user: updatedUser });
+        if (req.files?.cover) {
+            const response = await imagekit.upload({ file: req.files.cover[0].buffer, fileName: `cover_${userId}`, folder: 'covers' });
+            updates.cover_photo = response.url;
+        }
+
+        const user = await User.findByIdAndUpdate(userId, { $set: updates }, { new: true }).lean();
+        res.json({ success: true, user, message: 'Profile updated successfully' });
     } catch (error) {
         next(error);
     }
@@ -55,14 +55,12 @@ export const updateUserData = async (req, res, next) => {
 export const getUserProfile = async (req, res, next) => {
     try {
         const { profileId } = req.params;
-        const profile = await User.findById(profileId).lean(); // .lean() for performance
+        const profile = await User.findById(profileId).lean();
         if (!profile) {
             return res.status(404).json({ success: false, message: "Profile not found" });
         }
 
-        const posts = await Post.find({ user: profileId }).sort({ createdAt: -1 });
-        profile.postsCount = posts.length; // Attach post count
-
+        const posts = await Post.find({ user: profileId }).sort({ createdAt: -1 }).lean();
         res.json({ success: true, profile, posts });
     } catch (error) {
         next(error);
@@ -80,11 +78,8 @@ export const discoverUsers = async (req, res, next) => {
         const searchRegex = new RegExp(input, 'i');
         const users = await User.find({
             _id: { $ne: userId },
-            $or: [
-                { username: searchRegex },
-                { full_name: searchRegex },
-            ]
-        }).limit(10); // Add a limit for performance
+            $or: [{ username: searchRegex }, { full_name: searchRegex }]
+        }).limit(10).lean();
         res.json({ success: true, users });
     } catch (error) {
         next(error);
@@ -149,11 +144,21 @@ export const sendConnectionRequest = async (req, res, next) => {
         if (existingConnection) {
             return res.status(409).json({ success: false, message: 'A connection or pending request already exists.' });
         }
+
         const newConnection = await Connection.create({ from_user_id: userId, to_user_id: targetUserId });
+        
+        // ✅ Send a real-time event to the recipient
+        const sender = await User.findById(userId, 'full_name').lean();
+        sendSseEvent(targetUserId, 'newConnectionRequest', { 
+            message: `${sender.full_name} sent you a connection request.`,
+        });
+        
+        // Also trigger background job if needed
         await inngest.send({
             name: 'app/connection-request',
             data: { connectionId: newConnection._id.toString() }
         });
+        
         res.status(201).json({ success: true, message: 'Connection request sent' });
     } catch (error) {
         next(error);
@@ -173,7 +178,7 @@ export const acceptConnectionRequest = async (req, res, next) => {
             { new: true, session }
         );
         if (!connection) {
-            return res.status(404).json({ success: false, message: 'Connection request not found or already accepted.' });
+            return res.status(404).json({ success: false, message: 'Request not found.' });
         }
         await User.findByIdAndUpdate(userId, { $addToSet: { connections: requesterId } }, { session });
         await User.findByIdAndUpdate(requesterId, { $addToSet: { connections: userId } }, { session });
@@ -187,31 +192,48 @@ export const acceptConnectionRequest = async (req, res, next) => {
     }
 };
 
-// Get a user's network (connections, followers, etc.)
+// Decline a connection request
+export const declineConnectionRequest = async (req, res, next) => {
+    try {
+        const { userId } = req.auth();
+        const { requesterId } = req.body;
+        const result = await Connection.findOneAndDelete({
+            from_user_id: requesterId,
+            to_user_id: userId,
+            status: 'pending'
+        });
+        if (!result) {
+            return res.status(404).json({ success: false, message: 'Connection request not found.' });
+        }
+        res.json({ success: true, message: 'Connection request declined' });
+    } catch (error) {
+        next(error);
+    }
+};
+
+// Get a user's network
 export const getUserNetwork = async (req, res, next) => {
     try {
         const { userId } = req.auth();
-        // Use Promise.all for parallel database queries
         const [user, pendingRequests] = await Promise.all([
             User.findById(userId).populate([
                 { path: 'connections', select: 'full_name username profile_picture bio' },
                 { path: 'followers', select: 'full_name username profile_picture bio' },
                 { path: 'following', select: 'full_name username profile_picture bio' }
-            ]),
+            ]).lean(),
             Connection.find({ to_user_id: userId, status: 'pending' })
-                .populate('from_user_id', 'full_name username profile_picture bio')
+                .populate('from_user_id', 'full_name username profile_picture bio').lean()
         ]);
         
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found.' });
         }
-
         res.json({
             success: true,
             connections: user.connections,
             followers: user.followers,
             following: user.following,
-            pendingRequests: pendingRequests.map(req => req.from_user_id) // Simplify the structure
+            pendingRequests: pendingRequests.map(req => req.from_user_id)
         });
     } catch (error) {
         next(error);
