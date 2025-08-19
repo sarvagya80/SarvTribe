@@ -1,6 +1,8 @@
+// src/components/Loading.jsx
+
 import React from 'react';
 
-// Map props to full Tailwind classes
+// Map props to full Tailwind classes for safety and reusability
 const sizeClasses = {
   '10': 'w-10 h-10',
   '12': 'w-12 h-12',
@@ -18,14 +20,12 @@ const Loading = ({
   size = '10',
   color = 'purple-500'
 }) => {
-  // ✅ Select the class from the map, with a fallback
   const sizeClass = sizeClasses[size] || sizeClasses['10'];
   const colorClass = colorClasses[color] || colorClasses['purple-500'];
 
   return (
     <div style={{ height }} className='flex items-center justify-center' role="status">
       <div 
-        // ✅ Apply the full class names
         className={`${sizeClass} rounded-full border-4 ${colorClass} border-t-transparent animate-spin`}
       ></div>
       <span className="sr-only">Loading...</span>

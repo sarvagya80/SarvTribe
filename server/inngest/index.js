@@ -9,30 +9,48 @@ import connectDB from "../configs/db.js"; // ✅ Import your database connection
 export const inngest = new Inngest({ id: "SarvTribe" });
 
 // 1️⃣ Sync User on Creation
+// 1️⃣ Sync User on Creation (Corrected Version)
 const syncUserCreation = inngest.createFunction(
-    { id: 'sync-user-from-clerk' },
-    { event: 'clerk/user.created' },
-    async ({ event }) => {
-        await connectDB(); // ✅ Ensure DB is connected before running
+  { id: 'sync-user-from-clerk' },
+  { event: 'clerk/user.created' },
+  async ({ event }) => {
+    try {
+      await connectDB(); // Ensure DB is connected before running
 
-        const { id, first_name, last_name, email_addresses, image_url } = event.data;
-        let username = email_addresses[0].email_address.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+      const { id, first_name, last_name, email_addresses, image_url, username: clerkUsername } = event.data;
+      
+      // ✅ Robust way to create a username
+      let username = clerkUsername || email_addresses[0].email_address.split('@')[0].replace(/[^a-zA-Z0-9]/g, '_');
+      
+      const existingUser = await User.findOne({ username });
+      if (existingUser) {
+        username = `${username}_${Math.floor(1000 + Math.random() * 9000)}`;
+      }
 
-        const existingUser = await User.findOne({ username });
-        if (existingUser) {
-            username = `${username}_${Math.floor(1000 + Math.random() * 9000)}`;
-        }
+      // ✅ Robust way to create a full name, with a fallback
+      let fullName = `${first_name || ''} ${last_name || ''}`.trim();
+      if (!fullName) {
+        fullName = username; // Use the username as a fallback if name is empty
+      }
 
-        const userData = {
-            _id: id,
-            email: email_addresses[0].email_address,
-            full_name: `${first_name} ${last_name}`.trim(),
-            profile_picture: image_url,
-            username
-        };
-        await User.create(userData);
-        return { message: `User ${username} created.` };
+      const userData = {
+        _id: id,
+        email: email_addresses[0].email_address,
+        full_name: fullName,
+        profile_picture: image_url,
+        username,
+      };
+
+      await User.create(userData);
+      return { success: true, message: `User ${username} synced successfully.` };
+
+    } catch (error) {
+      // ✅ CRITICAL: Catch errors, log them, and re-throw them
+      console.error("Failed to sync user from Clerk:", error);
+      // This ensures Inngest marks the job as FAILED
+      throw error; 
     }
+  }
 );
 
 // 2️⃣ Sync User on Update

@@ -1,5 +1,7 @@
+// src/components/MenuItems.jsx
+
 import React from 'react';
-import PropTypes from 'prop-types'; // Import PropTypes
+import PropTypes from 'prop-types';
 import { menuItemsData } from '../assets/assets';
 import { NavLink } from 'react-router-dom';
 
@@ -26,7 +28,7 @@ const MenuItems = ({ setSideBarOpen }) => {
     );
 };
 
-// Add prop type validation for robustness
+// This ensures the component receives the props it needs to function correctly.
 MenuItems.propTypes = {
   setSideBarOpen: PropTypes.func.isRequired,
 };

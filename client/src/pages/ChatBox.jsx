@@ -1,22 +1,23 @@
+// src/pages/ChatBox.jsx
+
 import React, { useState, useRef, useEffect } from 'react';
 import { ImageIcon, SendHorizonal } from 'lucide-react';
 import { useDispatch, useSelector } from 'react-redux';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
 
 import api from '../api/axios';
-// ✅ CORRECTED: Import path from "fetures" to "features"
 import { addMessage, resetMessages, fetchMessages } from '../fetures/messages/messagesSlice';
 import Loading from '../components/Loading';
 
 const ChatBox = () => {
     const { messages, status } = useSelector((state) => state.messages);
     const { connections } = useSelector((state) => state.connections);
-    // ✅ CORRECTED: User data is in state.user.data
     const currentUser = useSelector((state) => state.user.data);
 
     const { userId } = useParams(); // This is the ID of the other user
     const dispatch = useDispatch();
+    const navigate = useNavigate();
 
     const [text, setText] = useState('');
     const [image, setImage] = useState(null);
@@ -24,7 +25,7 @@ const ChatBox = () => {
     const [recipient, setRecipient] = useState(null);
     const messagesEndRef = useRef(null);
 
-    // This image preview logic is perfect as is.
+    // This useEffect is crucial to prevent memory leaks from image previews
     useEffect(() => {
         return () => { if (imagePreview) URL.revokeObjectURL(imagePreview); };
     }, [imagePreview]);
@@ -46,15 +47,13 @@ const ChatBox = () => {
         formData.append('text', text);
         if (image) formData.append('image', image);
         
-        // Clear inputs immediately for better UX
+        // Clear inputs immediately for a better user experience
         setText('');
         setImage(null);
         setImagePreview(null);
         
         try {
-            // ✅ CHANGED: Simplified API call. Token is now handled automatically by the Axios interceptor.
             const { data } = await api.post('/api/message/send', formData);
-
             if (data.success) {
                 dispatch(addMessage(data.message));
             } else {
@@ -65,13 +64,12 @@ const ChatBox = () => {
         }
     };
 
-    // Effect to fetch initial chat history
+    // Effect to fetch initial chat history when the page loads
     useEffect(() => {
         if (userId) {
-            // ✅ CORRECTED: Dispatch the thunk with only the other user's ID. No token needed.
             dispatch(fetchMessages(userId));
         }
-        // This cleanup function is great for clearing the chat when you navigate away.
+        // Cleanup function to clear messages when navigating away
         return () => {
             dispatch(resetMessages());
         };
@@ -85,13 +83,13 @@ const ChatBox = () => {
         }
     }, [connections, userId]);
 
-    // Effect to scroll to the bottom of the messages
+    // Effect to scroll to the bottom of the messages when a new one arrives
     useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
     }, [messages]);
 
     if (status === 'loading') {
-        return <div className="flex-1"><Loading /></div>;
+        return <div className="flex-1 flex items-center justify-center"><Loading height="auto" /></div>;
     }
 
     if (!recipient) {
@@ -101,7 +99,7 @@ const ChatBox = () => {
     return (
         <div className='flex flex-col h-full bg-gray-50'>
             {/* Header */}
-            <div className='flex items-center gap-4 p-4 border-b border-gray-200 bg-white'>
+            <div className='flex items-center gap-4 p-4 border-b border-gray-200 bg-white cursor-pointer' onClick={() => navigate(`/profile/${recipient._id}`)}>
                 <img src={recipient.profile_picture} className='size-10 rounded-full object-cover' alt={`${recipient.full_name}'s profile`} />
                 <div>
                     <p className='font-semibold'>{recipient.full_name}</p>
@@ -116,7 +114,7 @@ const ChatBox = () => {
                         return (
                             <div key={message._id} className={`flex ${isSentByMe ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`p-3 max-w-lg rounded-xl shadow ${isSentByMe ? 'bg-indigo-500 text-white rounded-br-none' : 'bg-white text-slate-700 rounded-bl-none'}`}>
-                                    {message.message_type === 'image' && <img src={message.media_url} alt="Sent Media" className='w-full max-w-sm rounded-lg mb-2' />}
+                                    {message.message_type === 'image' && <img src={message.media_url} alt="Sent Media" className='w-full max-w-xs rounded-lg mb-2' />}
                                     <p className="whitespace-pre-wrap">{message.text}</p>
                                 </div>
                             </div>

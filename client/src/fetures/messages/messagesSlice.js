@@ -1,4 +1,5 @@
 // features/messages/messagesSlice.js
+
 import { createSlice, createAsyncThunk } from "@reduxjs/toolkit";
 import api from '../../api/axios';
 
@@ -8,12 +9,12 @@ const initialState = {
     error: null,
 };
 
-// ✅ CORRECTED: Fetches chat history with a specific user
+// This thunk fetches the chat history with a specific user.
 export const fetchMessages = createAsyncThunk(
     "messages/fetchMessages",
-    async (otherUserId, { rejectWithValue }) => { // Pass the other user's ID
+    async (otherUserId, { rejectWithValue }) => { // It correctly takes the other user's ID.
         try {
-            // ✅ CHANGED: Updated to the correct GET endpoint and path parameter
+            // It uses the correct, RESTful GET endpoint.
             const { data } = await api.get(`/api/message/chat/${otherUserId}`);
             if (data.success) {
                 return data.messages;
@@ -21,6 +22,7 @@ export const fetchMessages = createAsyncThunk(
                 return rejectWithValue('Failed to fetch messages.');
             }
         } catch (error) {
+            // It gracefully handles any server or network errors.
             return rejectWithValue(error.response?.data?.message || 'An error occurred while fetching messages');
         }
     }
@@ -30,13 +32,15 @@ const messagesSlice = createSlice({
     name: 'messages',
     initialState,
     reducers: {
+        // Adds a new message from the real-time connection.
         addMessage: (state, action) => {
-            // ✅ CHANGED: Use '_id' for MongoDB documents
+            // Prevents duplicate messages from being added.
             const exists = state.messages.find(msg => msg._id === action.payload._id);
             if (!exists) {
                 state.messages.push(action.payload);
             }
         },
+        // Resets the state when leaving a chat.
         resetMessages: (state) => {
             state.messages = [];
             state.status = 'idle';
@@ -44,6 +48,7 @@ const messagesSlice = createSlice({
         },
     },
     extraReducers: (builder) => {
+        // Handles all states of the fetchMessages thunk lifecycle.
         builder
             .addCase(fetchMessages.pending, (state) => {
                 state.status = 'loading';

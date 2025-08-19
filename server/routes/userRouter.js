@@ -1,8 +1,8 @@
-// server/routes/userRoutes.js
+// src/routes/userRouter.js
 
 import express from 'express';
 import {
-    acceptConnectionRequest,
+    acceptConnectionRequest, // 👈 1. Make sure this is imported
     discoverUsers,
     followUser,
     getMe,
@@ -17,11 +17,11 @@ import { upload } from '../middlewares/multer.js';
 
 const userRouter = express.Router();
 
-// ✅ THIS IS THE KEY: Specific routes like '/me' and '/network' MUST come first.
+// --- Specific routes first ---
 userRouter.get('/me', clerkProtect, getMe);
 userRouter.get('/network', clerkProtect, getUserNetwork);
-//latest comit
-// --- All other routes can follow ---
+
+// --- Action routes ---
 userRouter.patch(
     '/update',
     clerkProtect,
@@ -31,14 +31,13 @@ userRouter.patch(
     ]),
     updateUserData
 );
-
 userRouter.post('/discover', clerkProtect, discoverUsers);
 userRouter.post('/follow', clerkProtect, followUser);
 userRouter.post('/unfollow', clerkProtect, unfollowUser);
 userRouter.post('/connect/send', clerkProtect, sendConnectionRequest);
-userRouter.post('/connect/accept', clerkProtect, acceptConnectionRequest);
+userRouter.post('/connect/accept', clerkProtect, acceptConnectionRequest); // 👈 2. Add this line
 
-// ✅ AND THIS IS KEY: Generic routes with parameters MUST come last.
+// --- Generic routes with parameters last ---
 userRouter.get('/:profileId', clerkProtect, getUserProfile);
 
 export default userRouter;

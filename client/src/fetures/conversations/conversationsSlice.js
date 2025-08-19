@@ -1,6 +1,13 @@
-// features/conversations/conversationsSlice.js
+// features/conversations/conversationsSlice.js (Corrected)
+
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import api from '../../api/axios';
+
+const initialState = {
+    list: [],
+    status: 'idle',
+    error: null
+};
 
 export const fetchConversations = createAsyncThunk(
     'conversations/fetchConversations',
@@ -16,12 +23,15 @@ export const fetchConversations = createAsyncThunk(
 
 const conversationsSlice = createSlice({
     name: 'conversations',
-    initialState: {
-        list: [],
-        status: 'idle',
-        error: null
+    initialState,
+    reducers: {
+        // ✅ ADDED: A reducer to clear state on logout for consistency.
+        clearConversations: (state) => {
+            state.list = [];
+            state.status = 'idle';
+            state.error = null;
+        }
     },
-    reducers: {},
     extraReducers: (builder) => {
         builder
             .addCase(fetchConversations.pending, (state) => {
@@ -38,4 +48,5 @@ const conversationsSlice = createSlice({
     }
 });
 
+export const { clearConversations } = conversationsSlice.actions; // ✅ Export the new action
 export default conversationsSlice.reducer;

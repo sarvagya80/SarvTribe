@@ -1,36 +1,51 @@
+// src/components/UserProfileInfo.jsx
+
 import React from 'react';
 import moment from 'moment';
 import { Calendar, MapPin, PenBox, Verified } from 'lucide-react';
 import { useSelector } from 'react-redux';
 
 const UserProfileInfo = ({ user, posts, setShowEdit }) => {
-    // ✅ CORRECTED: The user data is in state.user.data
     const currentUser = useSelector((state) => state.user.data);
 
-    if (!user) {
-        return null; // Or a skeleton loader
+    // Prevents crashing while data is loading
+    if (!user || !currentUser) {
+        return null;
     }
 
-    const isOwnProfile = currentUser?._id === user._id;
+    // The correct way to check if the user is viewing their own profile
+    const isOwnProfile = currentUser._id === user._id;
 
     return (
-        <div className='relative py-4 px-6 md:px-8 bg-white'>
+        <div className='relative pt-4 px-6 md:px-8 bg-white shadow-md rounded-b-lg'>
+            {/* Cover Photo */}
+            <div 
+                className="h-48 bg-gray-200 rounded-t-lg -mx-6 -mt-4" 
+                style={{ 
+                    backgroundImage: `url(${user.cover_photo || 'https://via.placeholder.com/1200x300'})`, 
+                    backgroundSize: 'cover', 
+                    backgroundPosition: 'center' 
+                }}
+            ></div>
+
             <div className='flex flex-col md:flex-row items-start gap-6'>
-                <div className='w-32 h-32 border-4 border-white shadow-lg absolute -top-16 rounded-full'>
+                {/* Profile Picture */}
+                <div className='-mt-16 flex-shrink-0'>
                     <img
                         src={user.profile_picture}
                         alt={`${user.full_name}'s profile`}
-                        className='w-full h-full object-cover rounded-full z-20'
+                        className='w-32 h-32 object-cover rounded-full border-4 border-white shadow-lg'
                     />
                 </div>
-                <div className='w-full pt-16 md:pt-0 md:pl-36'>
+                
+                <div className='w-full pt-2'>
                     <div className='flex flex-col md:flex-row items-start justify-between'>
                         <div>
                             <div className='flex items-center gap-2'>
                                 <h1 className='text-2xl font-bold text-gray-900'>{user.full_name}</h1>
-                                {user.isVerified && <Verified className='w-6 h-6 text-blue-500' />}
+                                {user.isVerified && <Verified className='w-6 h-6 text-blue-500 fill-current' />}
                             </div>
-                            <p className='text-gray-600'>{user.username ? `@${user.username}` : 'add a username'}</p>
+                            <p className='text-gray-600'>@{user.username || 'no_username'}</p>
                         </div>
                         {isOwnProfile &&
                             <button onClick={() => setShowEdit(true)} className='flex items-center gap-2 border border-gray-300 hover:bg-gray-50 px-4 py-2 rounded-lg font-medium transition-colors mt-4 md:mt-0'>
@@ -39,32 +54,31 @@ const UserProfileInfo = ({ user, posts, setShowEdit }) => {
                         }
                     </div>
 
-                    <p className='text-gray-700 text-sm max-w-md mt-4'>{user.bio || 'No bio available.'}</p>
+                    <p className='text-gray-700 text-sm max-w-xl mt-4'>{user.bio || 'This user has not set a bio yet.'}</p>
                     
                     <div className='flex flex-wrap items-center gap-x-6 gap-y-2 text-sm text-gray-500 mt-4'>
                         <span className='flex items-center gap-1.5'>
                             <MapPin className='w-4 h-4' />
-                            {user.location || 'Add location'}
+                            {user.location || 'Location not set'}
                         </span>
                         <span className='flex items-center gap-1.5'>
                             <Calendar className='w-4 h-4' />
-                            Joined <span className='font-medium'>{moment(user.createdAt).fromNow()}</span>
+                            Joined {moment(user.createdAt).format('MMMM YYYY')}
                         </span>
                     </div>
 
                     <div className='flex items-center gap-6 mt-4 border-t border-gray-200 pt-4'>
                         <div>
-                            {/* We will get postsCount from the user object after the backend optimization */}
-                            <span className='sm:text-xl font-bold text-gray-900'>{user.postsCount ?? posts.length}</span>
-                            <span className='text-xs sm:text-sm text-gray-500 ml-1.5'>Posts</span>
+                            <span className='text-lg font-bold text-gray-900'>{posts.length}</span>
+                            <span className='text-sm text-gray-500 ml-1.5'>Posts</span>
                         </div>
                         <div>
-                            <span className='sm:text-xl font-bold text-gray-900'>{user.followers?.length || 0}</span>
-                            <span className='text-xs sm:text-sm text-gray-500 ml-1.5'>Followers</span>
+                            <span className='text-lg font-bold text-gray-900'>{user.followers?.length || 0}</span>
+                            <span className='text-sm text-gray-500 ml-1.5'>Followers</span>
                         </div>
                         <div>
-                            <span className='sm:text-xl font-bold text-gray-900'>{user.following?.length || 0}</span>
-                            <span className='text-xs sm:text-sm text-gray-500 ml-1.5'>Following</span>
+                            <span className='text-lg font-bold text-gray-900'>{user.following?.length || 0}</span>
+                            <span className='text-sm text-gray-500 ml-1.5'>Following</span>
                         </div>
                     </div>
                 </div>

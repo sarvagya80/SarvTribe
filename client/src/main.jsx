@@ -1,26 +1,32 @@
+// src/main.jsx
 
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.jsx'
-import { BrowserRouter } from 'react-router-dom'
- import { ClerkProvider } from '@clerk/clerk-react'
- import React from 'react'
- import {Provider}from 'react-redux'
- import { store } from './app/Store.js'
+import React from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import { ClerkProvider } from '@clerk/clerk-react';
+import { Provider } from 'react-redux';
+import { store } from './app/store.js'; // ✅ Best practice: lowercase filename
+import App from './App.jsx';
+import './index.css';
 
-// Import your Publishable Key
-const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
+// Import your Publishable Key from environment variables
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
-  throw new Error('Missing Publishable Key')
+  throw new Error('Missing Publishable Key');
 }
 
-createRoot(document.getElementById('root')).render(
-  <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
-    <BrowserRouter>
-    <Provider store={store}>
-        <App />
+const root = createRoot(document.getElementById('root'));
+
+root.render(
+  // ✅ Best practice: Wrap the entire app in StrictMode for development warnings
+  <React.StrictMode>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      <BrowserRouter>
+        <Provider store={store}>
+          <App />
         </Provider>
-    </BrowserRouter>
+      </BrowserRouter>
     </ClerkProvider>
-)
+  </React.StrictMode>
+);

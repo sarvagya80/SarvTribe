@@ -1,3 +1,5 @@
+// src/components/SideBar.jsx
+
 import React from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { assets } from '../assets/assets';
@@ -9,10 +11,10 @@ import Loading from './Loading';
 
 function SideBar({ sideBarOpen, setSideBarOpen }) {
     const navigate = useNavigate();
-    // ✅ CORRECTED: The user data is in state.user.data, not state.user.value
+    // Correctly get the user data from the Redux store
     const user = useSelector((state) => state.user.data);
 
-    // The loading state logic is perfect.
+    // Show a professional loading spinner while user data is being fetched
     if (!user) {
         return (
             <div className={`w-60 xl:w-72 bg-white border-r border-gray-200 flex flex-col justify-between items-center max-sm:absolute top-0 bottom-0 z-20 ${sideBarOpen ? 'translate-x-0' : 'max-sm:-translate-x-full'} transition-all duration-300 ease-in-out`}>
@@ -27,7 +29,7 @@ function SideBar({ sideBarOpen, setSideBarOpen }) {
                 <img
                     onClick={() => {
                         navigate('/');
-                        setSideBarOpen(false);
+                        setSideBarOpen(false); // Close sidebar on navigation for mobile
                     }}
                     src={assets.logo}
                     alt='SarvTribe Logo'
@@ -39,7 +41,7 @@ function SideBar({ sideBarOpen, setSideBarOpen }) {
                 <Link
                     to='/create-post'
                     className='flex items-center justify-center gap-2 py-2.5 mt-6 mx-6 rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-700 hover:to-purple-800 active:scale-95 transition text-white'
-                    onClick={() => setSideBarOpen(false)}
+                    onClick={() => setSideBarOpen(false)} // Close sidebar on navigation
                 >
                     <CirclePlus className='w-5 h-5' />
                     Create Post
@@ -48,8 +50,10 @@ function SideBar({ sideBarOpen, setSideBarOpen }) {
 
             <div className='w-full border-t border-gray-200 p-4 px-7 flex items-center justify-between'>
                 <div className='flex items-center gap-2'>
+                    {/* Use Clerk's standard, full-featured UserButton */}
                     <UserButton afterSignOutUrl='/login' />
                     <div>
+                        {/* Display the correct user data fields */}
                         <h1 className='text-sm font-medium'>{user.full_name}</h1>
                         <p className='text-xs text-gray-500'>@{user.username}</p>
                     </div>

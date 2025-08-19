@@ -1,66 +1,146 @@
-import React, { useState } from "react";
-import toast from "react-hot-toast";
-import api from "../api/axios";
+// src/components/StoryModal.jsx
 
-const StoryModal = ({ onClose, refreshStories }) => {
-    const [file, setFile] = useState(null);
-    const [loading, setLoading] = useState(false);
+import React, { useState, useEffect } from 'react';
+import { useDispatch } from 'react-redux';
+import { ArrowLeft, Sparkle, Upload, TextIcon } from 'lucide-react';
+import toast from 'react-hot-toast';
 
-    const handleUpload = async () => {
-        if (!file) {
-            toast.error("Please select a file to upload.");
-            return;
-        }
+// Import the Redux Thunk for creating a story
+import { createStory } from '../fetures/stories/storiesSlice';
 
-        setLoading(true);
-        const formData = new FormData();
-        formData.append("media", file);
-        
-        // This is a simple text story for now, can be expanded
-        formData.append("media_type", file.type.startsWith('video') ? 'video' : 'image');
+// The 'refreshStories' prop is no longer needed
+const StoryModal = ({ onClose }) => { 
+    const dispatch = useDispatch();
+    const bgColors = ["#4f46e5", "#7c3aed", "#db2777", "#e11d48", "#ca8a04", "#0d9488"];
+    const [mode, setMode] = useState('text');
+    const [background, setBackground] = useState(bgColors[0]);
+    const [media, setMedia] = useState(null);
+    const [text, setText] = useState('');
+    const [previewUrl, setPreviewUrl] = useState(null);
 
-        try {
-            // ✅ CHANGED: Correct endpoint and removed manual headers.
-            // The Axios interceptor adds the auth token and FormData sets the correct Content-Type.
-            await api.post("/api/story/create", formData);
-            
-            toast.success("Story uploaded!");
-            refreshStories();
-            onClose();
-        } catch (err) {
-            toast.error("Error uploading story. Please try again.");
-            console.error("Error uploading story:", err);
-        } finally {
-            setLoading(false);
+    const MAX_VIDEO_DURATION = 60; // in seconds
+    const MAX_VIDEO_SIZE_MB = 50; // in MB
+
+    useEffect(() => {
+        return () => { if (previewUrl) URL.revokeObjectURL(previewUrl); };
+    }, [previewUrl]);
+
+    const handleMediaUpload = (e) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.type.startsWith("video")) {
+            if (file.size > MAX_VIDEO_SIZE_MB * 1024 * 1024) {
+                return toast.error(`Video file size cannot exceed ${MAX_VIDEO_SIZE_MB} MB.`);
+            }
+            const video = document.createElement("video");
+            video.preload = "metadata";
+            video.onloadedmetadata = () => {
+                window.URL.revokeObjectURL(video.src);
+                if (video.duration > MAX_VIDEO_DURATION) {
+                    toast.error(`Video duration cannot exceed ${MAX_VIDEO_DURATION} seconds.`);
+                } else {
+                    setMedia(file);
+                    setPreviewUrl(URL.createObjectURL(file));
+                    setText("");
+                    setMode("media");
+                }
+            };
+            video.src = URL.createObjectURL(file);
+        } else if (file.type.startsWith("image")) {
+            setMedia(file);
+            setPreviewUrl(URL.createObjectURL(file));
+            setText("");
+            setMode("media");
         }
     };
 
+    const handleCreateStory = async () => {
+        const media_type = mode === 'media'
+            ? (media?.type.startsWith('image') ? 'image' : "video")
+            : "text";
+
+        if (media_type === "text" && !text.trim()) {
+            throw new Error("Please enter some text.");
+        }
+        if (media_type !== 'text' && !media) {
+            throw new Error("Please select a file.");
+        }
+
+        let formData = new FormData();
+        formData.append('content', text);
+        formData.append('media_type', media_type);
+        if (media) formData.append('media', media);
+        formData.append('background_color', background);
+
+        // ✅ This now dispatches the Redux action.
+        await dispatch(createStory(formData)).unwrap();
+        onClose();
+    };
+
     return (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-            <div className="bg-white p-6 rounded-lg shadow-md w-full max-w-sm">
-                <h2 className="text-lg font-semibold mb-4">Add a Story</h2>
-                <input
-                    type="file"
-                    accept="image/*,video/*"
-                    onChange={(e) => setFile(e.target.files[0])}
-                    className="mb-4 block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100"
-                />
-                <div className="flex justify-end space-x-2">
-                    <button
-                        onClick={onClose}
-                        disabled={loading}
-                        className="px-4 py-2 bg-gray-200 text-gray-800 rounded-md hover:bg-gray-300 disabled:opacity-50"
-                    >
-                        Cancel
+        <div className='fixed inset-0 z-50 min-h-screen bg-black/80 backdrop-blur text-white flex items-center justify-center p-4'>
+            <div className='w-full max-w-md'>
+                <div className='text-center mb-4 flex items-center justify-between'>
+                    <button onClick={onClose} className='text-white p-2 cursor-pointer rounded-full hover:bg-white/10'>
+                        <ArrowLeft />
                     </button>
-                    <button
-                        onClick={handleUpload}
-                        disabled={loading}
-                        className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:opacity-50"
-                    >
-                        {loading ? 'Uploading...' : 'Upload'}
-                    </button>
+                    <h2 className='text-lg font-semibold'>Create a Story</h2>
+                    <span className='w-10'></span> {/* Spacer */}
                 </div>
+
+                <div className='rounded-lg h-96 flex items-center justify-center relative overflow-hidden' style={{ backgroundColor: background }}>
+                    {mode === 'text' && (
+                        <textarea
+                            className='bg-transparent text-white w-full h-full p-6 text-2xl resize-none focus:outline-none text-center flex items-center justify-center'
+                            placeholder='Start typing'
+                            onChange={(e) => setText(e.target.value)}
+                            value={text}
+                        />
+                    )}
+                    {mode === 'media' && previewUrl && (
+                        media?.type.startsWith('image') ? (
+                            <img src={previewUrl} alt="Media Preview" className='object-contain h-full w-full' />
+                        ) : (
+                            <video src={previewUrl} className='object-contain h-full w-full' controls autoPlay />
+                        )
+                    )}
+                </div>
+
+                <div className='flex items-center justify-center mt-4 gap-2'>
+                    {bgColors.map((color) => (
+                        <div 
+                            key={color} 
+                            className={`w-6 h-6 rounded-full ring-2 cursor-pointer transition-transform hover:scale-110 ${background === color ? 'ring-white' : 'ring-transparent'}`} 
+                            style={{ backgroundColor: color }} 
+                            onClick={() => setBackground(color)} 
+                        />
+                    ))}
+                </div>
+
+                <div className='flex gap-2 mt-4'>
+                    <button
+                        onClick={() => { setMode('text'); setMedia(null); setPreviewUrl(null); }}
+                        className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg font-semibold transition-colors ${mode === 'text' ? 'bg-white text-black' : "bg-white/10 hover:bg-white/20"}`}
+                    >
+                        <TextIcon size={18} />Text
+                    </button>
+                    <label className={`flex-1 flex items-center justify-center gap-2 p-3 rounded-lg font-semibold cursor-pointer transition-colors ${mode === 'media' ? 'bg-white text-black' : "bg-white/10 hover:bg-white/20"}`}>
+                        <input onChange={handleMediaUpload} type='file' accept='image/*,video/*' className='hidden' />
+                        <Upload size={18} />Photos/Videos
+                    </label>
+                </div>
+
+                <button
+                    onClick={() => toast.promise(handleCreateStory(), { 
+                        loading: 'Creating story...',
+                        success: 'Story created!',
+                        error: (err) => err.message || 'Could not create story.'
+                    })}
+                    className='flex items-center justify-center gap-2 text-white font-bold py-3 mt-4 w-full rounded-lg bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 active:scale-95 transition'
+                >
+                    <Sparkle size={18} /> Create story
+                </button>
             </div>
         </div>
     );
